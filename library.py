@@ -3,7 +3,7 @@ import subprocess
 import os.path
 import re
 
-# Image class used to store image information before converting to .adoc.
+# 'Image' class used to store image data from the Markdown files before conversion to Asciidoc.
 class Image:
 
     def __init__(self):
@@ -13,8 +13,10 @@ class Image:
         self.width = 12*38
         self.height = None
 
-# Function that takes in source file with doxygen syntax and outputs file with standard markdown syntax.
-def doxygen_to_markdown_formulas(src_file):
+# 'doxygen_to_markdown_equations' takes a source file with Doxygen syntax for equations as input and returns the file with standard Markdown syntax.
+# It also removes '[TOC]' from the top of each file.
+# A '#' is added to all section titles, except for the main section title of each file.
+def doxygen_to_markdown_equations(src_file):
     
     # Copies name of input file and assigns output path and file at ./markdown/temp/'name'.markdown
     name = os.path.splitext(os.path.basename(src_file))[0]
@@ -39,114 +41,136 @@ def doxygen_to_markdown_formulas(src_file):
                 
                 edit_line = line
                 
+                # Skip '[TOC]' as table of contents are set by the index.adoc file.
                 if "[TOC]" in edit_line:
                     edit_line = next(file_1)
 
-                # fix_sections adds one # to each section title, except for the main section title of each file.
+                # 'fix_sections' adds one # to each section title, except for the main section title of each file.
                 if "#" in line[:1]:
                     edit_line = fix_sections(edit_line)
 
+                # Correcting invalid syntax.
                 edit_line = edit_line.replace("\\f $", "\\f$")
  
+                # Counting how many equations are in the current line. There are two occurrences per equation.
                 occurrences = edit_line.count("\\f$")
                 
+                # If there are no equations, the line gets copied as it is.
                 if occurrences == 0:
                     write_line = edit_line
                 
                 else:
                     write_line = ""
 
+                # The following 'while' loop splits the line on the first two '\f$' elements.
+                # Everything between '\f$' gets assigned to the variable 'equation', which gets altered into LaTeX syntax that Pandoc can recognize.
+                # Everything after the second occurence of '\f$' gets assigned to the variable 'post', which gets handled identically to the original line by the next iteration of the loop.
                 while occurrences > 0:
                     
+                    # If there is only one occurence, all text after '\f$', including subsequent lines and up until the next occurence of '\f$', gets treated as a block expression.
                     if occurrences == 1:
                         
                         line_list = edit_line.split("\\f$")
 
                         pre = line_list[0]
-                        formula = line_list[1].replace(" ", "")
 
-                        nextLine = next(file_1)
-                        occurrences = nextLine.count("\\f$")
+                        # All spaces are removed from equations to avoid syntax errors.
+                        equation = line_list[1].replace(" ", "")
 
+                        next_line = next(file_1)
+                        occurrences = next_line.count("\\f$")
+                        
+                        # Adds all subsequent lines to 'equation' until the next occurence of '\f$'.
                         while occurrences == 0:
 
-                            formula += nextLine.replace(" ", "")
+                            equation += next_line.replace(" ", "")
 
-                            nextLine = next(file_1)
-                            occurrences = nextLine.count("\\f$")
+                            next_line = next(file_1)
+                            occurrences = next_line.count("\\f$")
 
-                        line_list = nextLine.split("\\f$", 1)
+                        line_list = next_line.split("\\f$", 1)
 
-                        formula += line_list[0].replace(" ", "")
+                        equation += line_list[0].replace(" ", "")
                         post = line_list[1]
 
                         occurrences = post.count("\\f$")
 
+                    # Inline equations (two or more occurences of '\f$' on the same line) are handled here.
                     elif occurrences > 1:                        
 
                         line_list = edit_line.split("\\f$", 2)
 
-                        #print(line_list)
-
                         pre = line_list[0]
-                        formula = line_list[1].replace(" ", "")
+                        equation = line_list[1].replace(" ", "")
                         post = line_list[2]
 
                         occurrences -= 2
-
-                    if "\\mathrm" not in formula:
-
-                        formula = "\\mathrm{" + formula + "}"
                     
-                    elif "\\mathrm{" not in formula:
+                    # Most equations in the original markdown files are stylized with '\mathrm{equation}'.
+                    # '\mathrm' is added to all equations, so that the styling is consistent.
+                    if "\\mathrm" not in equation:
+
+                        equation = "\\mathrm{" + equation + "}"
+                    
+                    # In cases where equation x is stylized without surrounding braces {}, e.g. \f$ \mathrm x \f$, a space is readded to give correct syntax.
+                    elif "\\mathrm{" not in equation:
                         
-                        formula = formula.replace("\\mathrm", "\\mathrm ")
-
-                    formula = latex_syntax(formula)
-
-                    if occurrences == 0:
-                        write_line = write_line + pre + formula + post
+                        equation = equation.replace("\\mathrm", "\\mathrm ")
                     
-                    else:
-                        write_line = write_line + pre + formula
+                    # Fixes syntax. Further explanation at function definition.
+                    equation = latex_syntax(equation)
 
-                    edit_line = post
+                    # If the line contains no additional equations the line gets written.
+                    if occurrences == 0:
+                        write_line = write_line + pre + equation + post
+                    
+                    # If the line contains additional equations, the first part up to and including the handled equation gets written, 
+                    # while the rest of the line gets sent to be handled by the next iteration of the 'while' loop.
+                    else:
+                        write_line = write_line + pre + equation
+                        
+                        edit_line = post
+
 
                 file_2.write(write_line)
 
     return dst_file
 
-def latex_syntax(form):
+# 'latex_syntax' adds spaces behind mathematical expressions such as greek letters and operators.
+# Also fixes some syntax that pandoc has problems interpreting.
+def latex_syntax(equation):
 
-    formula = form
+    eq = equation
     
-    formula = formula.replace("\\left[", "[")
-    formula = formula.replace("\\left", "")                    
-    formula = formula.replace("\\right", "")
-    formula = formula.replace("]", "\\]")
-    formula = formula.replace("\\times", "\\times ")
-    formula = formula.replace("\\Delta", "\\Delta ")
-    formula = formula.replace("\\pi", "\\pi ")
-    formula = formula.replace("\\rho", "\\rho ")
-    formula = formula.replace("\\omega", "\\omega ")
-    formula = formula.replace("\\approx", "\\approx ")
-    formula = formula.replace("\\alpha", "\\alpha ")
-    formula = formula.replace("\\beta", "\\beta ")
-    formula = formula.replace("\\dot", "\\dot ")
-    formula = formula.replace("\\cdot", "\\cdot ")
-    formula = formula.replace("\\eta", "\\eta ")
-    formula = formula.replace("\\gamma", "\\gamma ")
-    formula = formula.replace("\\sigma", "\\sigma ")
-    formula = formula.replace("\\varepsilon", "\\varepsilon ")
-    formula = formula.replace("\\xi", "\\xi ")
-    formula = formula.replace("\\phi", "\\phi ")
-    formula = formula.replace("\\neq", "\\neq ")
-    formula = formula.replace("\n", "")
+    eq = eq.replace("\\left[", "[")
+    eq = eq.replace("\\left", "")                    
+    eq = eq.replace("\\right", "")
+    eq = eq.replace("]", "\\]")
+    eq = eq.replace("\\times", "\\times ")
+    eq = eq.replace("\\Delta", "\\Delta ")
+    eq = eq.replace("\\pi", "\\pi ")
+    eq = eq.replace("\\rho", "\\rho ")
+    eq = eq.replace("\\omega", "\\omega ")
+    eq = eq.replace("\\approx", "\\approx ")
+    eq = eq.replace("\\alpha", "\\alpha ")
+    eq = eq.replace("\\beta", "\\beta ")
+    eq = eq.replace("\\dot", "\\dot ")
+    eq = eq.replace("\\cdot", "\\cdot ")
+    eq = eq.replace("\\eta", "\\eta ")
+    eq = eq.replace("\\gamma", "\\gamma ")
+    eq = eq.replace("\\sigma", "\\sigma ")
+    eq = eq.replace("\\varepsilon", "\\varepsilon ")
+    eq = eq.replace("\\xi", "\\xi ")
+    eq = eq.replace("\\phi", "\\phi ")
+    eq = eq.replace("\\neq", "\\neq ")
+    eq = eq.replace("\n", "")
 
-    formula = "$" + formula + "$"
+    eq = "$" + eq + "$"
 
-    return formula
+    return eq
 
+# 'fix_sections' adds one '#' to each section title, except for the main section title of each file.
+# It also adds '\n' before each title, which fixes issues when there are no blank lines between paragraphs and subsequent section titles.
 def fix_sections(line):
 
     fixed_line = line
@@ -165,12 +189,15 @@ def fix_sections(line):
 
     return fixed_line
 
+# 'pull_images' removes images from the Markdown files and stores their relevant data in 'Image' instances.
+# The 'Image' names gets written in the location of the original images, so that 'push_images' can place the images at the correct positions with Asciidoc syntax.
 def pull_images(src_file):
     name = os.path.splitext(os.path.basename(src_file))[0]
     dst_file = os.path.join(os.path.dirname(src_file), "..", name + ".markdown")
 
     os.makedirs(os.path.dirname(dst_file), exist_ok = True)
 
+    # List of 'Image' instances, which is later returned and used as an argument for 'push_images'.
     image_list = []
 
     with open(src_file, mode = "r", encoding = "utf-8") as file_1: 
@@ -181,57 +208,63 @@ def pull_images(src_file):
                 
                 if "\\anchor" in line or "![" in line:
                     
-                    img = Image()
-                     
-                    if "\\anchor" in line:
+                    try:
+                        img = Image()
                         
-                        img.anchor = line.split()[1].strip()
-                        
-                        nextLine = next(file_1)
-
-                        if "![" in nextLine:
+                        if "\\anchor" in line:
                             
-                            img_data = re.split("\!\[|\]\(\@ref |\)\n", nextLine)
-                        
+                            img.anchor = line.split()[1].strip()
+                            
+                            next_line = next(file_1)
+
+                            if "![" in next_line:
+                                
+                                img_data = re.split("\!\[|\]\(\@ref |\)\n", next_line)
+                            
+                            else:
+                                
+                                next_line = next(file_1)
+
+                                if "![" in next_line:
+                                
+                                    img_data = re.split("\!\[|\]\(\@ref |\)", next_line)
+
                         else:
                             
-                            nextLine = next(file_1)
+                            img_data = re.split("\!\[|\]\(\@ref |\)", line)
 
-                            if "![" in nextLine:
-                            
-                                img_data = re.split("\!\[|\]\(\@ref |\)", nextLine)
-
-                    else:
-                        
-                        img_data = re.split("\!\[|\]\(\@ref |\)", line)
-
-                    img.title = img_data[1].strip()
-
-                    illegal_title_symbols = [",", ".", "-", "(", "\)", ")"]
-
-                    for symb in illegal_title_symbols:
-                        
-                        if symb in img.title:
-
-                            img.title = img.title.replace(symb, "")
-
-                    img.path = "../" + img_data[2]
-
-                    file_2.write(img.title + "\n")
-
-                    nextLine = next(file_1)
-
-                    if "@image" in nextLine:
                         try:
-                            img.width = int(re.split("=|cm", nextLine)[1])*38
+                            img.title = img_data[1].strip()
                         except:
-                            pass
-                        
-                    else:
-                        file_2.write("\n")
+                            print(line)
 
-                    image_list.append(img)
+                        illegal_title_symbols = [",", ".", "-", "(", "\)", ")"]
+
+                        for symb in illegal_title_symbols:
+                            
+                            if symb in img.title:
+
+                                img.title = img.title.replace(symb, "")
+
+                        img.path = "../" + img_data[2]
+
+                        file_2.write(img.title + "\n")
+
+                        next_line = next(file_1)
+
+                        if "@image" in next_line:
+                            try:
+                                img.width = int(re.split("width=|cm", next_line)[1])*38
+                            except:
+                                pass
+                            
+                        else:
+                            file_2.write("\n")
+
+                        image_list.append(img)
                     
+                    except:
+                        pass
 
 
                 else:
@@ -240,6 +273,8 @@ def pull_images(src_file):
 
     return dst_file, image_list
 
+# 'push_images' looks for lines matching the names of the 'Image' instances. If a match is found the instance's data gets written with Asciidoc syntax.
+# Also adds '[discrete]\n' before all subsection titles of 'Release notes', to remove them from the table of contents as well as their section numbers.
 def push_images(src_file, image_list, release_notes = False):
     name = os.path.splitext(os.path.basename(src_file))[0]
     dst_file = os.path.join(os.path.dirname(src_file), "..", name + ".adoc")
@@ -294,13 +329,19 @@ def run_pandoc(src_file):
 
     return dst_file
 
-def run_asciidoctor(src_file):
-    subprocess.call(['asciidoctor', src_file, "--trace"])
-    subprocess.call(['asciidoctor-web-pdf', src_file, "--trace"])
+def run_asciidoctor(src_file, doc_title):
+    
+    #subprocess.call(['asciidoctor', src_file, "--trace"])
+    #subprocess.call(['asciidoctor-web-pdf', src_file, "--trace"])
+    subprocess.call(['asciidoctor', '-o /../build/' + doc_title + '.html', src_file, "--trace"])
+    subprocess.call(['asciidoctor-web-pdf', '-f', src_file, '-t /../build/' + doc_title + '.pdf', "--trace"])
 
+# 'create_doc' takes an .adoc index file as input, which contains information on which section files to include in the final document.
 def create_doc(index_file):
     
-    with open(index_file, mode = "r", encoding = "utf-8") as file_1: 
+    with open(index_file, mode = "r", encoding = "utf-8") as file_1:
+
+        doc_title = file_1.readline().split("=")[1].strip()
         
         for line in file_1:
             
@@ -310,12 +351,12 @@ def create_doc(index_file):
 
                 markdown_src_file = os.path.join(os.path.dirname(index_file), "..", name + ".markdown")
 
-                markdown_file_formulas = doxygen_to_markdown_formulas(markdown_src_file)
+                markdown_file_equations = doxygen_to_markdown_equations(markdown_src_file)
 
-                markdown_stripped_images, image_list = pull_images(markdown_file_formulas)
+                markdown_stripped_images, image_list = pull_images(markdown_file_equations)
 
                 asciidoc_file = run_pandoc(markdown_stripped_images)
 
                 asciidoc_filled_images = push_images(asciidoc_file, image_list, "release_note" in name)
 
-    run_asciidoctor(index_file)
+    run_asciidoctor(index_file, doc_title)
