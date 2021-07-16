@@ -1,0 +1,404 @@
+# How to Run the Program
+
+
+
+
+## How to give Input - General Rules {#how_to_run_input}
+
+
+
+
+### Organization of Input Data {#how_to_run_organization}
+
+The input data are organized in groups, each group starting with a data
+group identifier, and terminating on the next data group identifier.
+
+A data group identifier may consist of one, two or three words, which
+give a unique description of the data group. Each word may consist of
+several characters, but only the first four characters of each word are
+checked. The user may, of course, write the words completely to
+increase readability.
+
+In this manual each input line is presented within a standard list, and
+each list represents either one single input line or a sequence of
+similar input lines. The input description list is presented in [The Input Description List](@ref how_to_run_the_input_description).
+
+
+
+
+### Formats {#how_to_run_formats}
+
+Nearly all input data are read by FREAD /1/, a FORTRAN free-format
+reader and decoder. This means that the data items may be written
+anywhere on the input line, as long as the specified order is satisfied.
+The data items must be separated by at least one blank (exceeding
+blanks are ignored). Note that since blank is exclusively interpreted as
+a delimiter, blank can not be used to specify a zero value.
+
+The line length is currently limited to 260 characters. Note that a
+RIFLEX input line may be split into several lines on the input file,
+see
+[Continuation of Input Statements](@ref how_to_run_continuation_of).
+
+
+
+#### Important:
+
+All digits, letters and/or special symbols in a data item must be given
+consecutively without blanks.
+
+
+
+
+#### Comments {#how_to_run_comments}
+
+Input lines with an apostrophe (`'`) in the first column are interpreted
+as comments, and simply ignored. Comments may be inserted anywhere in
+the input data stream in order to improve the readability of the input
+data.
+
+
+
+
+##### Example:
+
+~~~
+'THIS IS A COMMENT
+'NOTE! COMMENTS ARE IGNORED BY THE PROGRAM
+~~~
+
+
+
+
+#### Alphanumeric Data Items {#how_to_run_alphanumeric_data}
+
+In this manual, alphanumeric data items are denoted as character with
+a maxim length given in parentheses; e. g.  character(8) which has a
+maximum length of 8. If the input item is longer than the maximum
+length, all characters in excess of this are simply ignored.
+
+An alphanumeric data item may consist of one or more characters. The
+first character is always a letter (A-Z), while the remaining ones may
+be letters, digits or special symbols (except /, \$, & and blank).
+
+
+
+##### Example:
+
+~~~
+'WITH CHARACTER(4)
+ENVIRONMENTAL DATA
+'WILL BE INTERPRETED AS
+ENVI DATA
+'WITH CHARACTER(6)
+ENVIRONMENTAL DATA
+'WILL BE INTERPRETED AS
+ENVIRO DATA
+~~~
+
+
+When file names are input, the maximum length of the file name 
+is given in the manual.
+
+
+
+##### Example:
+
+~~~
+CHFTRA
+~~~
+
+- `CHFTRA: character(80)`: File name with transfer functions data
+
+
+It is recommended that the combined length of the path and file name
+does not exceed 256 characters.
+
+
+
+
+#### Integer Data Items (denoted integer) {#how_to_run_integer_data}
+
+All characters must be digits. The first digit may be preceded by a + or a - character.
+
+
+
+##### Example:
+
+~~~
+0 1 -27 +66
+~~~
+
+
+
+
+#### Real Number Data Items (denoted real) {#how_to_run_real_number_data}
+
+A real number data entry may consist of up to 3 components, i.e. an
+integer part i, a decimal part d, and exponent part e. The following 4
+basic forms are accepted:
+
+
+`(+)i (+)i. (+)i.d (+).d`
+
+
+These may all be combined with exponent parts yielding the forms:
+
+
+`(+)iE(+)e (+)i.E(+)e (+)i.dE(+)e (+).dE(+)e`
+
+
+
+##### Example:
+
+~~~
+0 -1. -0.2E14 +17.E-3 1.78E+3
+~~~
+
+
+
+
+#### Default Data Items {#how_to_run_default_data_items}
+
+Some of the input data have default values, that is, values to be
+inserted when no other values are given. There are two ways to signal
+that the program shall insert default values. One, that may always be
+used, is to type a slash (/) for the actual data item. Second, if the
+actual data item (or data items) is (are) the last one(s) on the input
+line, no slash(es) is (are) necessary. FREAD will insert the number of
+slashes needed. Note that the slash is also a data item, and must be
+separated from adjacent data items by one or more blanks.
+
+
+
+##### Example:
+
+~~~
+'THE DEFAULT VALUE OF THE SECOND DATA ITEM IS 2. THEN
+3 / 5
+'WILL BE INTERPRETED AS
+3 2 5
+'6 DATA ITEMS ARE READ AND THE LAST 3 DATA ITEMS HAVE DEFAULT
+VALUES 6, 7 AND 8, THEN
+1 2 3
+'WILL BE INTERPRETED AS
+1 2 3 6 7 8
+~~~
+
+
+
+
+#### Continuation of Input Statements {#how_to_run_continuation_of}
+
+An input statement may consist of one or several input lines. If an
+input statement consists of more than one input line, all its input
+lines except the last one must be terminated by the character &, which
+must be preceded by at least one blank. This implies that on such lines
+data cannot be specified beyond column 258.
+
+
+
+##### Example:
+
+~~~
+1 2 &
+3
+'IS THE SAME AS GIVING
+1 2 3
+~~~
+
+
+
+
+#### The Input Description List {#how_to_run_the_input_description}
+
+~~~
+<parameter names, in the order decoded>
+~~~
+
+- `Parameter: type, default: Default value`: Description $\mathrm{[unit\]}$
+    - Optional additional information for the given parameter.
+
+Comments, notes etc.
+
+If there is no default value, that part of the line is skipped. The
+parameter types are integer, real and character.
+
+If unit is not applicable, e.g. for integer options, that part of the
+line is skipped.
+
+
+
+
+##### Example:
+
+~~~
+IKS DAMP
+~~~
+
+- `IKS: integer`: Stiffness code 1
+    - 1 : Constant spring compression stiffness
+    - N : Table with N pairs of pressure force - displacements to be specified
+        - N > 2
+- `DAMP: real, default: 0`: Dash pot damping coefficient $\mathrm{[FT/L\]}$
+
+
+
+
+#### Data group Identifier {#how_to_run_data-group_identifier}
+
+As mentioned in [Organization of Input Data](@ref how_to_run_organization), the input
+data are organized in groups.
+
+A data group identifier is given on the first input line of each group.
+
+~~~
+IDW1 IDW2 IDW3
+~~~
+
+- `IDW1: character(4)`: First word of the identifier
+- `IDW2: character(4)`: Second word of the identifier
+- `IDW3: character(4)`: Third word of the identifier
+
+Data group identifiers may consist of one, two or three words
+
+
+In the input description, data group identifiers are not presented
+within the standard list, but the words of the identifiers are written
+completely in the code box above. With format character(4), only the first
+four characters are checked, and these parts of the words are marked.
+
+
+
+##### Example:
+
+~~~
+ROTAtion STIFfness CHARacteristics
+~~~
+
+may be given as
+
+~~~
+ROTA STIF CHAR
+~~~
+
+
+
+## How to run RIFLEX with the riflex.bat batch file {#how_to_run_standard}
+
+This section will give a description of how to run RIFLEX modules
+using the `riflex.bat` batch file delivered as a part of a `RIFLEX`
+installation. The `riflex.bat` file is used for running the batch
+oriented modules `INPMOD`, `STAMOD`, `DYNMOD` and `OUTMOD`.
+
+The file name convention used consists of a prefix in addition to the
+basic file names described in
+[Explanation of Files Used](@ref introduction_explanation). 
+The prefix and the basic file names are separated by an underscore.
+
+A common prefix may be used for all the files or two prefixes may be
+used; prefix1 for identification of `INPMOD` and `STAMOD` files and
+prefix2 for identification of `DYNMOD` and `OUTMOD` files. If prefix2
+is not given, it will be set to prefix1.
+
+The necessary commands to run `RIFLEX` modules `INPMOD`, `STAMOD`,
+`DYNMOD` and `OUTMOD` with a common prefix are:
+
+~~~
+riflex inpmod prefix1
+riflex stamod prefix1
+riflex dynmod prefix1
+riflex outmod prefix1
+~~~
+
+or alternatively with two prefixes:
+~~~
+riflex inpmod prefix1
+riflex stamod prefix1
+riflex dynmod prefix1 prefix2
+riflex outmod prefix1 prefix2
+~~~
+
+
+
+
+## How to run RIFLEX with the bash script vrr {#how_to_run_bash}
+
+This section will give a description of how to run `RIFLEX` modules
+using the `vrr` bash script. Bash scripts may be run on Linux or Unix
+systems or in a bash shell under Windows; e.g. Git bash, Cygwin.
+
+The `vrr` bash script is delivered as a part of a `RIFLEX`
+installation and may be used to run several modules in succession,
+stopping if errors are detected. The necessary command to run the
+`RIFLEX` modules `INPMOD`, `STAMOD`, `DYNMOD` and `OUTMOD` with a
+common prefix is:
+
+~~~
+/full/path/to/Riflex/bin/vrr isdo prefix1
+~~~
+
+
+
+
+
+## RIFLEX files
+
+The file names used by the different modules are summarized in the
+following. For description of the files used for internal communication,
+see [Explanation of Files Used](@ref introduction_explanation).
+
+
+
+### INPMOD files:
+
+- `prefix1_inpmod.inp` - ASCII input file
+- `prefix1_inpmod.res` - ASCII result file
+.
+- `prefix1_ifninp.sam` - internal communication file
+
+
+
+### STAMOD files:
+
+- `prefix1_stamod.inp` - ASCII input file
+- `prefix1_stamod.res` - ASCII result file
+- `prefix1_stamod.mpf` - ASCII file with key static results
+.
+- `prefix1_ifnsys.sam` - internal communication file
+- `prefix1_ifnsta.ffi` - internal communication file
+- `prefix1_ifndmp.sam` - internal communication file
+
+
+
+### DYNMOD files:
+
+- `prefix2_dynmod.inp` - ASCII input file
+- `prefix2_dynmod.res` - ASCII result file
+- `prefix2_dynmod.mpf` - ASCII file with key dynamic results
+.
+- `prefix2_ifnirr.sam` - internal communication file
+- `prefix2_ifndyn.ffi` - internal communication file
+- `prefix2_ifndmp.sam` - internal communication file
+
+
+
+### OUTMOD files:
+
+- `prefix2_outmod.inp` - ASCII input file
+- `prefix2_outmod.res` - ASCII result file
+- `prefix2_outmod.mpf` - ASCII file with some key `OUTMOD` results; e.g. stresses.
+- `prefix2_ifnplo.ffi` - plot file, to be referred in `PLOMOD`
+
+
+The user input is given on files with extension `.inp`, while key
+results can be found on files with extension `.res`.
+
+
+
+
+## References {#how_to_run_references}
+
+1. Adam, J et al.  (1987): FREAD: A FORTRAN free format reader and decoder. SINTEF, Trondheim, Norway.
+
+
